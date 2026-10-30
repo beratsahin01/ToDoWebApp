@@ -1,7 +1,6 @@
 # 📝 ToDoWebApp - Görev & Ekip Yönetim Paneli
 
-Modern, güvenli ve performans odaklı bir **Görev ve Çalışma Odaları (WorkGroup)** yönetim web uygulaması. ASP.NET Core, Entity Framework Core, Redis önbellekleme, MSSQL ve Docker mimarisi üzerine inşa edilmiştir.
-
+[![CI - Build & Test](https://github.com/beratsahin01/ToDoWebApp/actions/workflows/ci.yml/badge.svg)](https://github.com/beratsahin01/ToDoWebApp/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
 ![MSSQL](https://img.shields.io/badge/Database-SQL_Server-CC292B?logo=microsoftsqlserver)
 ![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis)
