@@ -1,0 +1,495 @@
+@using System.Security.Claims
+@{
+    Layout = null;
+    ViewData["Title"] = "Görev Takip Paneli";
+
+    string userName = User.FindFirstValue(ClaimTypes.Name) ?? "Misafir";
+    string initials = userName.Length >= 2 ? userName.Substring(0, 2).ToUpper() : userName.ToUpper();
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ToDo</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="~/css/site.css" rel="stylesheet" />
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div class="duo-layout">
+        
+        <!-- SOL MENÜ -->
+        <div class="duo-sidebar">
+            <div class="duo-logo">
+                <div class="duo-logo-icon">
+                    <i class="fas fa-feather-alt"></i>
+                </div>
+                ToDo
+            </div>
+            
+            <a href="#" class="duo-nav-link active" onclick="selectGroup(null)" id="nav-group-personal">
+                <i class="fas fa-home"></i> Görevlerim
+            </a>
+            
+            <a href="#" class="duo-nav-link d-flex align-items-center justify-content-between" data-bs-toggle="modal" data-bs-target="#friendsModal">
+                <span><i class="fas fa-user-friends me-2"></i> Arkadaşlarım</span>
+                <span id="sidebarFriendBadge" class="badge bg-danger rounded-pill d-none" style="font-size: 0.72rem; padding: 4px 8px;">0</span>
+            </a>
+            
+            <div style="border-top: 1px solid var(--border-color); margin: 20px 0;"></div>
+            <div style="color: var(--text-light); font-weight: 600; font-size: 0.75rem; margin-bottom: 12px; padding-left: 10px; letter-spacing: 0.5px;">ODALARIM</div>
+            
+            <div id="sidebarGroupList" class="mb-auto">
+                <!-- Groups loaded via JS -->
+            </div>
+            
+            <button class="btn-outline-custom w-100 mt-auto" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                <i class="fas fa-plus me-2"></i> Yeni Oda Kur
+            </button>
+        </div>
+
+        <!-- ORTA ALAN (GÖREV KARTLARI) -->
+        <div class="duo-main" id="mainContentArea" style="align-items: stretch; padding: 40px 48px;">
+            <div class="d-flex w-100 justify-content-between align-items-center mb-5">
+                <h2 id="topbarTitle" style="font-weight: 700; color: var(--text-main); margin: 0; font-size: 1.8rem;">Kişisel Alanım</h2>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-outline-info d-none" id="btnGroupManage" onclick="openGroupManageModal()">
+                        <i class="fas fa-users me-2"></i> Oda Ayarları
+                    </button>
+                    
+                    <button class="btn-new-task" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                        <i class="fas fa-plus"></i> Yeni Görev
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cards Container -->
+            <div id="pathContainer" class="w-100">
+                <div class="text-center text-muted mt-5">Yükleniyor...</div>
+            </div>
+            
+        </div>
+
+        <!-- SAĞ MENÜ (WIDGETS & PROFILE) -->
+        <div class="duo-right-panel">
+            
+            <!-- PROFİL BÖLÜMÜ (SAĞ EN ÜST) -->
+            <div class="profile-section">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-custom" id="themeToggleBtn" style="border: none !important; width: 40px; height: 40px; padding: 0; border-radius: 50%;">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <div class="dropdown">
+                        <div class="profile-dropdown-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="profile-pic" id="topProfilePic">
+                                @initials
+                            </div>
+                            <i class="fas fa-chevron-down text-muted" style="font-size: 0.8rem; margin-right: 4px;"></i>
+                        </div>
+                    <ul class="dropdown-menu dropdown-menu-end profile-dropdown-menu">
+                        <li>
+                            <div class="px-3 py-2">
+                                <div class="fw-bold" style="color: var(--text-main);" id="topProfileName">@userName</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Proje Yöneticisi</div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="fas fa-user-edit me-2 text-muted"></i> Profilimi Düzenle</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#generalSettingsModal"><i class="fas fa-cog me-2 text-muted"></i> Genel Ayarlar</a></li>
+                        <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+                        <li><a class="dropdown-item text-danger" href="/Auth/Logout"><i class="fas fa-sign-out-alt me-2"></i> Çıkış Yap</a></li>
+                    </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- İstatistik Widget -->
+            <div class="duo-widget mt-2">
+                <h3>Performans Özeti</h3>
+                
+                <div class="duo-stat-item">
+                    <div class="duo-stat-icon bg-yellow-duo"><i class="fas fa-crown"></i></div>
+                    <div class="duo-stat-text">Tamamlanan</div>
+                    <div class="duo-stat-value text-yellow-duo" id="statDone">0</div>
+                </div>
+                
+                <div class="duo-stat-item">
+                    <div class="duo-stat-icon bg-blue-duo"><i class="fas fa-fire"></i></div>
+                    <div class="duo-stat-text">Devam Eden</div>
+                    <div class="duo-stat-value text-blue-duo" id="statActive">0</div>
+                </div>
+                
+                <div class="duo-stat-item">
+                    <div class="duo-stat-icon bg-red-duo"><i class="fas fa-exclamation"></i></div>
+                    <div class="duo-stat-text">Yüksek Öncelik</div>
+                    <div class="duo-stat-value text-red-duo" id="statHighPriority">0</div>
+                </div>
+            </div>
+            
+            <!-- Kategori Yönetimi Widget -->
+            <div class="duo-widget">
+                <h3>Kategoriler</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Görevlerinizi organize etmek için yeni klasörler (kategoriler) oluşturabilirsiniz.</p>
+                <button class="btn-outline-custom" data-bs-toggle="modal" data-bs-target="#manageCategoriesModal">
+                    <i class="fas fa-tags me-2"></i> Yönet
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+
+    <!-- MODALS KISMI -->
+    <!-- KATEGORİLERİ DÜZENLE MODALI -->
+    <div class="modal fade" id="manageCategoriesModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Kategorileri Yönet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCategoryForm" class="mb-4">
+                        <label class="form-label">Yeni Kategori Ekle</label>
+                        <div class="input-group">
+                            <input type="text" id="newCategoryName" class="form-control" required placeholder="Örn: Bölüm 1" />
+                            <button type="submit" class="btn btn-primary" style="border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                                <i class="fas fa-plus"></i> Ekle
+                            </button>
+                        </div>
+                    </form>
+                    <h6 class="mb-3" style="font-weight: 600; color: var(--text-main);">Mevcut Kategoriler</h6>
+                    <div id="modalCategoryListContainer" style="max-height: 250px; overflow-y: auto;">
+                        <div class="text-muted text-center py-3">Yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GÖREV EKLEME MODALI -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Yeni Görev Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTaskForm">
+                        <div class="mb-3">
+                            <label class="form-label">Başlık</label>
+                            <input type="text" id="taskTitle" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <input type="text" id="taskDesc" class="form-control" />
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Kategori</label>
+                                <select id="taskCategory" class="form-select">
+                                    <option value="">Kategori Yok</option>
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Öncelik</label>
+                                <select id="taskPriority" class="form-select">
+                                    <option value="Düşük">Düşük</option>
+                                    <option value="Orta" selected>Orta</option>
+                                    <option value="Yüksek">Yüksek</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Bitiş Tarihi (Opsiyonel)</label>
+                            <input type="datetime-local" id="taskDueDate" class="form-control" />
+                        </div>
+                        <button type="submit" class="btn-new-task w-100 mt-2">Kaydet</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GÖREV DÜZENLEME MODALI -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Görev Detayı</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTaskForm">
+                        <input type="hidden" id="editTaskId" />
+                        <div class="mb-3">
+                            <label class="form-label">Başlık</label>
+                            <input type="text" id="editTaskTitle" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <input type="text" id="editTaskDesc" class="form-control" />
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Kategori</label>
+                                <select id="editTaskCategory" class="form-select">
+                                    <option value="">Kategori Yok</option>
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Öncelik</label>
+                                <select id="editTaskPriority" class="form-select">
+                                    <option value="Düşük">Düşük</option>
+                                    <option value="Orta">Orta</option>
+                                    <option value="Yüksek">Yüksek</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Bitiş Tarihi (Opsiyonel)</label>
+                            <input type="datetime-local" id="editTaskDueDate" class="form-control" />
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="button" id="btnToggleStatus" class="btn btn-primary w-100" style="background: var(--warning-bg) !important;">
+                                <i class="fas fa-check"></i> Tamamla
+                            </button>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> Güncelle
+                            </button>
+                            <button type="button" id="btnDeleteTask" class="btn btn-primary w-50" style="background: var(--danger-bg) !important;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr style="border-top:1px solid var(--border-color); margin: 24px 0;" />
+                    <div class="comments-section">
+                        <h6 class="fw-bold mb-3" style="color: var(--text-main);"><i class="fas fa-comments text-primary-duo me-2"></i>Yorumlar</h6>
+                        <div id="commentsList" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px; padding-right:8px;">
+                            <!-- Comments loaded via JS -->
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="newCommentInput" class="form-control" placeholder="Bir yorum yaz..." onkeydown="if(event.key === 'Enter') { event.preventDefault(); sendComment(); }" />
+                            <button type="button" class="btn btn-primary-custom" onclick="sendComment()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ODA KURMA MODALI -->
+    <div class="modal fade" id="createGroupModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Yeni Oda Kur</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createGroupForm">
+                        <div class="mb-3">
+                            <label class="form-label">Oda Adı</label>
+                            <input type="text" id="newGroupName" class="form-control" required placeholder="Örn: Bitirme Projesi" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Odayı Kur</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ODA YÖNETİM MODALI -->
+    <div class="modal fade" id="shareGroupModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Oda Ayarları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="shareGroupForm">
+                        <input type="hidden" id="shareGroupId" />
+                        <div class="mb-3">
+                            <label class="form-label">Arkadaş Seç</label>
+                            <select id="shareUsername" class="form-select" required>
+                                <option value="" disabled selected>Yükleniyor...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Yetki Düzeyi</label>
+                            <select id="shareRole" class="form-select">
+                                <option value="Viewer">Sadece İzleyici</option>
+                                <option value="Admin">Düzenleyici (Admin)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Davet Et</button>
+                    </form>
+                    
+                    <hr style="border-top: 1px solid var(--border-color); margin: 24px 0;" />
+                    
+                    <h6 class="fw-bold mb-3" style="color: var(--text-main);">Odadaki Üyeler</h6>
+                    <div id="sharedUsersList" style="max-height: 150px; overflow-y: auto;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFIL DÜZENLE MODALI -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Profilimi Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="profileTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#personalInfoTab" type="button" role="tab">Kişisel Bilgiler</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profilePicTab" type="button" role="tab">Profil Resmi</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <!-- Kişisel Bilgiler -->
+                        <div class="tab-pane fade show active" id="personalInfoTab" role="tabpanel">
+                            <form id="editProfileForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Ad Soyad</label>
+                                    <input type="text" id="profileNameInput" class="form-control" required />
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 mt-2">Bilgileri Kaydet</button>
+                            </form>
+                        </div>
+                        <!-- Profil Resmi -->
+                        <div class="tab-pane fade" id="profilePicTab" role="tabpanel">
+                            <div class="text-center mb-4">
+                                <div id="currentModalProfilePic" class="profile-pic mx-auto mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                                </div>
+                                <form id="uploadPicForm" style="display:inline;">
+                                    <label class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                        <i class="fas fa-upload me-2"></i> Kendi Fotoğrafımı Yükle
+                                        <input type="file" id="customPicInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif" />
+                                    </label>
+                                </form>
+                            </div>
+                            
+                            <h6 class="fw-bold mb-3" style="color: var(--text-main); font-size: 0.9rem;">Veya Hazır Avatarlardan Seçin:</h6>
+                            <div class="d-flex flex-wrap gap-3 justify-content-center" id="stockAvatarsContainer">
+                                <!-- JS ile doldurulacak -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENEL AYARLAR MODALI -->
+    <div class="modal fade" id="generalSettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Genel Ayarlar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold" style="color: var(--text-main);">Bildirimler</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Görev bitiş tarihlerinde e-posta al.</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" checked style="width: 40px; height: 20px;">
+                        </div>
+                    </div>
+                    <hr style="border-top: 1px solid var(--border-color); margin: 16px 0;" />
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold" style="color: var(--text-main);">Haftalık Özet</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Performans özetimi haftalık olarak gönder.</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" style="width: 40px; height: 20px;">
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-4 mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-info-circle me-2"></i> Ayarlarınız tarayıcınıza yerel olarak kaydedilir.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    @Html.AntiForgeryToken()
+    <script src="~/js/site.js"></script>
+    <!-- ARKADAŞLARIM MODALI -->
+    <div class="modal fade" id="friendsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="min-height: 500px;">
+                <div class="modal-header">
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-user-friends text-primary-duo me-2"></i> Arkadaşlarım</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row h-100">
+                        <div class="col-md-6 border-end" style="border-color: var(--border-color) !important;">
+                            <h6 class="fw-bold mb-3">Arkadaş Ekle</h6>
+                            <div class="d-flex gap-2 mb-3">
+                                <input type="text" id="friendSearchInput" class="form-control" placeholder="Kullanıcı adı veya isim ile ara..." onkeyup="if(event.key === 'Enter') searchFriends();" />
+                                <button class="btn btn-primary-custom" onclick="searchFriends()"><i class="fas fa-search"></i></button>
+                            </div>
+                            <div id="friendSearchResults" style="max-height: 150px; overflow-y: auto;">
+                                <!-- Arama sonuçları -->
+                                <div class="text-muted text-center small mt-4">Kişi bulmak için arama yapın.</div>
+                            </div>
+
+                            <hr style="border-color: var(--border-color); margin: 20px 0;" />
+                            <h6 class="fw-bold mb-2">Gelen İstekler <span class="badge bg-red-duo" id="pendingReqCount">0</span></h6>
+                            <div id="pendingRequestsList" class="mb-3" style="max-height: 130px; overflow-y: auto;">
+                                <!-- Gelen İstekler -->
+                            </div>
+
+                            <hr style="border-color: var(--border-color); margin: 20px 0;" />
+                            <h6 class="fw-bold mb-2">Gönderilen İstekler <span class="badge bg-secondary" id="sentReqCount">0</span></h6>
+                            <div id="sentRequestsList" style="max-height: 130px; overflow-y: auto;">
+                                <!-- Gönderilen İstekler -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Arkadaş Listen <span class="badge bg-primary-duo" id="friendsCount">0</span></h6>
+                            <div id="acceptedFriendsList" style="max-height: 420px; overflow-y: auto;">
+                                <!-- Arkadaşlar -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

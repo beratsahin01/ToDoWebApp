@@ -1,0 +1,66 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Giriş Yap";
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - To Do Panel</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Ana Tasarım Dosyamız -->
+    <link href="~/css/site.css" rel="stylesheet" />
+</head>
+<body>
+
+    <div class="auth-wrapper">
+        <div class="auth-box">
+            <div class="text-center mb-4">
+                <div class="auth-logo"><i class="fas fa-feather-alt"></i></div>
+                <h4 class="fw-bold mb-1" style="color: var(--text-main);">Tekrar Hoş Geldiniz</h4>
+                <p class="text-muted" style="font-size: 0.9rem;">Devam etmek için hesabınıza giriş yapın.</p>
+            </div>
+
+            <!-- Hata Mesajı Alanı -->
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger bg-danger bg-opacity-25 border-danger border-opacity-50 text-white rounded-3 p-2 mb-3 text-center" style="font-size: 0.9rem;">
+                    <i class="fas fa-exclamation-circle me-1"></i> @ViewBag.Error
+                </div>
+            }
+
+            <form action="/Auth/Login" method="post">
+                @Html.AntiForgeryToken()
+                <!-- Email Input -->
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size: 0.85rem; font-weight: 600;">E-Posta Adresi</label>
+                    <input type="email" name="email" class="form-control" placeholder="ornek@mail.com" required autocomplete="email" />
+                </div>
+
+                <!-- Şifre Input -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label class="form-label text-muted mb-0" style="font-size: 0.85rem; font-weight: 600;">Şifre</label>
+                        <a href="/Auth/ForgotPassword" class="custom-link" style="font-size: 0.8rem;">Şifremi Unuttum</a>
+                    </div>
+                    <input type="password" name="password" class="form-control mt-2" placeholder="••••••••" required autocomplete="current-password" />
+                </div>
+
+                <button type="submit" class="btn-new-task w-100 justify-content-center mb-4" style="padding: 12px;">
+                    Giriş Yap <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </form>
+
+            <div class="text-center text-muted" style="font-size: 0.9rem;">
+                Hesabınız yok mu? <a href="/Auth/Register" class="custom-link fw-bold">Hemen Oluşturun</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
