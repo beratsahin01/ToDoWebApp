@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -18,6 +19,7 @@ namespace ToDoWebApp.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IDistributedCache _cache;
+        private readonly IMemoryCache _memoryCache;
         private readonly ILogger<TasksController> _logger;
 
         private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -26,10 +28,11 @@ namespace ToDoWebApp.Controllers
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
-        public TasksController(ApplicationDbContext context, IDistributedCache cache, ILogger<TasksController> logger)
+        public TasksController(ApplicationDbContext context, IDistributedCache cache, IMemoryCache memoryCache, ILogger<TasksController> logger)
         {
             _context = context;
             _cache = cache;
+            _memoryCache = memoryCache;
             _logger = logger;
         }
 
@@ -87,6 +90,12 @@ namespace ToDoWebApp.Controllers
             
             if (!await HasGroupAccess(userId, groupId)) return StatusCode(403, "Bu odaya erişim yetkiniz yok.");
 
+            var catCacheKey = $"categories_{userId}_{groupId}";
+            if (_memoryCache.TryGetValue(catCacheKey, out var cachedCats))
+            {
+                return Ok(cachedCats);
+            }
+
             var categories = await _context.Categories
                 .AsNoTracking()
                 .Where(c => c.WorkGroupId == groupId && (groupId != null || c.UserId == userId))
@@ -98,6 +107,7 @@ namespace ToDoWebApp.Controllers
                 })
                 .ToListAsync();
                 
+            _memoryCache.Set(catCacheKey, categories, TimeSpan.FromMinutes(5));
             return Ok(categories);
         }
 
@@ -121,6 +131,7 @@ namespace ToDoWebApp.Controllers
 
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
+            _memoryCache.Remove($"categories_{userId}_{categoryDto.WorkGroupId}");
             await SafeInvalidateCacheAsync(userId, categoryDto.WorkGroupId);
             return Ok(category);
         }
@@ -143,6 +154,7 @@ namespace ToDoWebApp.Controllers
             var workGroupId = category.WorkGroupId;
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
+            _memoryCache.Remove($"categories_{userId}_{workGroupId}");
             await SafeInvalidateCacheAsync(userId, workGroupId);
             return Ok();
         }

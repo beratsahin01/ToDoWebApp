@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using ToDoWebApp.Models;
 using ToDoWebApp.Models.Data;
@@ -16,10 +17,12 @@ namespace ToDoWebApp.Controllers
     public class WorkGroupsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _memoryCache;
 
-        public WorkGroupsController(ApplicationDbContext context)
+        public WorkGroupsController(ApplicationDbContext context, IMemoryCache memoryCache)
         {
             _context = context;
+            _memoryCache = memoryCache;
         }
 
         private int GetCurrentUserId()
@@ -31,6 +34,13 @@ namespace ToDoWebApp.Controllers
         public async Task<IActionResult> GetMyGroups()
         {
             var userId = GetCurrentUserId();
+            var cacheKey = $"workgroups_{userId}";
+
+            if (_memoryCache.TryGetValue(cacheKey, out var cachedGroups))
+            {
+                return Ok(cachedGroups);
+            }
+
             var groups = await _context.WorkGroups
                 .AsNoTracking()
                 .Include(g => g.Members)
@@ -48,6 +58,7 @@ namespace ToDoWebApp.Controllers
                 })
                 .ToListAsync();
 
+            _memoryCache.Set(cacheKey, groups, TimeSpan.FromMinutes(5));
             return Ok(groups);
         }
 
@@ -66,6 +77,7 @@ namespace ToDoWebApp.Controllers
             _context.WorkGroups.Add(group);
             await _context.SaveChangesAsync();
 
+            _memoryCache.Remove($"workgroups_{userId}");
             return Ok(group);
         }
 
@@ -98,6 +110,8 @@ namespace ToDoWebApp.Controllers
 
             _context.WorkGroups.Remove(group);
             await _context.SaveChangesAsync();
+
+            _memoryCache.Remove($"workgroups_{userId}");
             return Ok(new { message = "Oda ve tüm içeriği başarıyla silindi." });
         }
 

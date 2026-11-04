@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using ToDoWebApp.Models.Data;
 
@@ -13,11 +14,13 @@ namespace ToDoWebApp.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly IMemoryCache _memoryCache;
 
-        public ProfileController(ApplicationDbContext context, IWebHostEnvironment env)
+        public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, IMemoryCache memoryCache)
         {
             _context = context;
             _env = env;
+            _memoryCache = memoryCache;
         }
 
         public class UpdateProfileDto
@@ -31,15 +34,24 @@ namespace ToDoWebApp.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdStr == null || !int.TryParse(userIdStr, out int userId)) return Unauthorized();
 
+            var cacheKey = $"profile_{userId}";
+            if (_memoryCache.TryGetValue(cacheKey, out var cachedProfile))
+            {
+                return Ok(cachedProfile);
+            }
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
-            return Ok(new
+            var profileData = new
             {
                 name = user.Username,
                 user.Email,
                 user.ProfilePictureUrl
-            });
+            };
+
+            _memoryCache.Set(cacheKey, profileData, TimeSpan.FromMinutes(10));
+            return Ok(profileData);
         }
 
         [HttpPost("update-info")]
@@ -57,6 +69,7 @@ namespace ToDoWebApp.Controllers
             user.Username = dto.Name.Trim();
             await _context.SaveChangesAsync();
 
+            _memoryCache.Remove($"profile_{userId}");
             return Ok();
         }
 
@@ -79,6 +92,7 @@ namespace ToDoWebApp.Controllers
             user.ProfilePictureUrl = pictureUrl;
             await _context.SaveChangesAsync();
 
+            _memoryCache.Remove($"profile_{userId}");
             return Ok(new { url = pictureUrl });
         }
 
@@ -140,6 +154,7 @@ namespace ToDoWebApp.Controllers
             user.ProfilePictureUrl = fileUrl;
             await _context.SaveChangesAsync();
 
+            _memoryCache.Remove($"profile_{userId}");
             return Ok(new { url = fileUrl });
         }
     }
