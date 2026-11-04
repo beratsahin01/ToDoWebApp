@@ -12,15 +12,19 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ToDo</title>
+    <meta name="color-scheme" content="light dark" />
+    <title>@ViewData["Title"] - ToDo Workspace</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="~/css/site.css" rel="stylesheet" />
     <script>
         (function () {
             const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 document.documentElement.setAttribute('data-bs-theme', 'dark');
             }
@@ -32,25 +36,26 @@
     <div class="duo-layout">
         
         <!-- SOL MENÜ -->
-        <div class="duo-sidebar">
+        <aside class="duo-sidebar">
             <div class="duo-logo">
                 <div class="duo-logo-icon">
                     <i class="fas fa-feather-alt"></i>
                 </div>
-                ToDo
+                <span>ToDo</span>
             </div>
             
             <a href="#" class="duo-nav-link active" onclick="selectGroup(null)" id="nav-group-personal">
-                <i class="fas fa-home"></i> Görevlerim
+                <i class="fas fa-layer-group"></i>
+                <span>Görevlerim</span>
             </a>
             
             <a href="#" class="duo-nav-link d-flex align-items-center justify-content-between" data-bs-toggle="modal" data-bs-target="#friendsModal">
                 <span><i class="fas fa-user-friends me-2"></i> Arkadaşlarım</span>
-                <span id="sidebarFriendBadge" class="badge bg-danger rounded-pill d-none" style="font-size: 0.72rem; padding: 4px 8px;">0</span>
+                <span id="sidebarFriendBadge" class="badge bg-red-duo d-none">0</span>
             </a>
             
             <div style="border-top: 1px solid var(--border-color); margin: 20px 0;"></div>
-            <div style="color: var(--text-light); font-weight: 600; font-size: 0.75rem; margin-bottom: 12px; padding-left: 10px; letter-spacing: 0.5px;">ODALARIM</div>
+            <div style="color: var(--text-light); font-weight: 700; font-size: 0.72rem; margin-bottom: 12px; padding-left: 8px; letter-spacing: 0.08em; text-transform: uppercase;">ODALARIM</div>
             
             <div id="sidebarGroupList" class="mb-auto">
                 <!-- Groups loaded via JS -->
@@ -59,16 +64,19 @@
             <button class="btn-outline-custom w-100 mt-auto" data-bs-toggle="modal" data-bs-target="#createGroupModal">
                 <i class="fas fa-plus me-2"></i> Yeni Oda Kur
             </button>
-        </div>
+        </aside>
 
         <!-- ORTA ALAN (GÖREV KARTLARI) -->
-        <div class="duo-main" id="mainContentArea" style="align-items: stretch; padding: 40px 48px;">
-            <div class="d-flex w-100 justify-content-between align-items-center mb-5">
-                <h2 id="topbarTitle" style="font-weight: 700; color: var(--text-main); margin: 0; font-size: 1.8rem;">Kişisel Alanım</h2>
+        <main class="duo-main" id="mainContentArea">
+            <div class="d-flex w-100 justify-content-between align-items-center mb-4 pb-2">
+                <div>
+                    <h2 id="topbarTitle" style="font-weight: 800; color: var(--text-main); margin: 0; font-size: 1.85rem; letter-spacing: -0.03em;">Kişisel Alanım</h2>
+                    <p class="text-muted mb-0" style="font-size: 0.9rem; font-weight: 500;">Günlük görevlerini organize et ve üretkenliğini artır.</p>
+                </div>
                 
                 <div class="d-flex align-items-center gap-3">
                     <button class="btn btn-outline-info d-none" id="btnGroupManage" onclick="openGroupManageModal()">
-                        <i class="fas fa-users me-2"></i> Oda Ayarları
+                        <i class="fas fa-cog me-2"></i> Oda Ayarları
                     </button>
                     
                     <button class="btn-new-task" data-bs-toggle="modal" data-bs-target="#addTaskModal">
@@ -79,18 +87,21 @@
             
             <!-- Cards Container -->
             <div id="pathContainer" class="w-100">
-                <div class="text-center text-muted mt-5">Yükleniyor...</div>
+                <div class="text-center text-muted mt-5 py-5">
+                    <div class="spinner-border text-primary-duo" role="status"></div>
+                    <div class="mt-2 fw-semibold">Görevler yükleniyor...</div>
+                </div>
             </div>
             
-        </div>
+        </main>
 
         <!-- SAĞ MENÜ (WIDGETS & PROFILE) -->
-        <div class="duo-right-panel">
+        <aside class="duo-right-panel">
             
             <!-- PROFİL BÖLÜMÜ (SAĞ EN ÜST) -->
             <div class="profile-section">
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-outline-custom" id="themeToggleBtn" style="border: none !important; width: 40px; height: 40px; padding: 0; border-radius: 50%;">
+                    <button class="btn btn-sm btn-outline-custom" id="themeToggleBtn" title="Tema Değiştir" style="border: 1px solid var(--border-color) !important; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-moon" id="themeIcon"></i>
                     </button>
                     <div class="dropdown">
@@ -98,27 +109,28 @@
                             <div class="profile-pic" id="topProfilePic">
                                 @initials
                             </div>
-                            <i class="fas fa-chevron-down text-muted" style="font-size: 0.8rem; margin-right: 4px;"></i>
+                            <span class="fw-bold ms-1" style="font-size: 0.88rem; color: var(--text-main);">@userName</span>
+                            <i class="fas fa-chevron-down text-muted" style="font-size: 0.75rem; margin-left: 4px;"></i>
                         </div>
-                    <ul class="dropdown-menu dropdown-menu-end profile-dropdown-menu">
-                        <li>
-                            <div class="px-3 py-2">
-                                <div class="fw-bold" style="color: var(--text-main);" id="topProfileName">@userName</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">Proje Yöneticisi</div>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider border-secondary opacity-25"></li>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="fas fa-user-edit me-2 text-muted"></i> Profilimi Düzenle</a></li>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#generalSettingsModal"><i class="fas fa-cog me-2 text-muted"></i> Genel Ayarlar</a></li>
-                        <li><hr class="dropdown-divider border-secondary opacity-25"></li>
-                        <li><a class="dropdown-item text-danger" href="/Auth/Logout"><i class="fas fa-sign-out-alt me-2"></i> Çıkış Yap</a></li>
-                    </ul>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <div class="px-3 py-2">
+                                    <div class="fw-bold" style="color: var(--text-main);" id="topProfileName">@userName</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">Proje Yöneticisi</div>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="fas fa-user-edit me-2 text-muted"></i> Profilimi Düzenle</a></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#generalSettingsModal"><i class="fas fa-sliders me-2 text-muted"></i> Genel Ayarlar</a></li>
+                            <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+                            <li><a class="dropdown-item text-danger" href="/Auth/Logout"><i class="fas fa-sign-out-alt me-2"></i> Çıkış Yap</a></li>
+                        </ul>
                     </div>
                 </div>
             </div>
             
             <!-- İstatistik Widget -->
-            <div class="duo-widget mt-2">
+            <div class="duo-widget">
                 <h3>Performans Özeti</h3>
                 
                 <div class="duo-stat-item">
@@ -134,7 +146,7 @@
                 </div>
                 
                 <div class="duo-stat-item">
-                    <div class="duo-stat-icon bg-red-duo"><i class="fas fa-exclamation"></i></div>
+                    <div class="duo-stat-icon bg-red-duo"><i class="fas fa-bolt"></i></div>
                     <div class="duo-stat-text">Yüksek Öncelik</div>
                     <div class="duo-stat-value text-red-duo" id="statHighPriority">0</div>
                 </div>
@@ -143,13 +155,13 @@
             <!-- Kategori Yönetimi Widget -->
             <div class="duo-widget">
                 <h3>Kategoriler</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Görevlerinizi organize etmek için yeni klasörler (kategoriler) oluşturabilirsiniz.</p>
+                <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Görevlerinizi daha iyi organize etmek için özel kategoriler oluşturup yönetin.</p>
                 <button class="btn-outline-custom" data-bs-toggle="modal" data-bs-target="#manageCategoriesModal">
-                    <i class="fas fa-tags me-2"></i> Yönet
+                    <i class="fas fa-tags me-2"></i> Kategorileri Yönet
                 </button>
             </div>
             
-        </div>
+        </aside>
     </div>
 
 
@@ -159,20 +171,20 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Kategorileri Yönet</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-tags text-primary-duo me-2"></i>Kategorileri Yönet</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addCategoryForm" class="mb-4">
                         <label class="form-label">Yeni Kategori Ekle</label>
                         <div class="input-group">
-                            <input type="text" id="newCategoryName" class="form-control" required placeholder="Örn: Bölüm 1" />
+                            <input type="text" id="newCategoryName" class="form-control" required placeholder="Örn: Tasarım, Backend, Sunum" />
                             <button type="submit" class="btn btn-primary" style="border-radius: 0 var(--radius-md) var(--radius-md) 0;">
                                 <i class="fas fa-plus"></i> Ekle
                             </button>
                         </div>
                     </form>
-                    <h6 class="mb-3" style="font-weight: 600; color: var(--text-main);">Mevcut Kategoriler</h6>
+                    <h6 class="mb-3" style="font-weight: 700; color: var(--text-main);">Mevcut Kategoriler</h6>
                     <div id="modalCategoryListContainer" style="max-height: 250px; overflow-y: auto;">
                         <div class="text-muted text-center py-3">Yükleniyor...</div>
                     </div>
@@ -186,18 +198,18 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Yeni Görev Ekle</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-plus-circle text-primary-duo me-2"></i>Yeni Görev Ekle</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addTaskForm">
                         <div class="mb-3">
                             <label class="form-label">Başlık</label>
-                            <input type="text" id="taskTitle" class="form-control" required />
+                            <input type="text" id="taskTitle" class="form-control" placeholder="Görev başlığı girin..." required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Açıklama</label>
-                            <input type="text" id="taskDesc" class="form-control" />
+                            <input type="text" id="taskDesc" class="form-control" placeholder="Açıklama (opsiyonel)..." />
                         </div>
                         <div class="row">
                             <div class="col-6 mb-3">
@@ -215,11 +227,11 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-4">
                             <label class="form-label">Bitiş Tarihi (Opsiyonel)</label>
                             <input type="datetime-local" id="taskDueDate" class="form-control" />
                         </div>
-                        <button type="submit" class="btn-new-task w-100 mt-2">Kaydet</button>
+                        <button type="submit" class="btn-new-task w-100 justify-content-center">Görevi Kaydet</button>
                     </form>
                 </div>
             </div>
@@ -231,7 +243,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Görev Detayı</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-edit text-primary-duo me-2"></i>Görev Detayı</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -300,14 +312,14 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Yeni Oda Kur</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-users-cog text-primary-duo me-2"></i>Yeni Oda Kur</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="createGroupForm">
                         <div class="mb-3">
                             <label class="form-label">Oda Adı</label>
-                            <input type="text" id="newGroupName" class="form-control" required placeholder="Örn: Bitirme Projesi" />
+                            <input type="text" id="newGroupName" class="form-control" required placeholder="Örn: Bitirme Projesi, Yazılım Ekibi" />
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-2">Odayı Kur</button>
                     </form>
@@ -321,7 +333,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Oda Ayarları</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-users text-primary-duo me-2"></i>Oda Ayarları</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -358,7 +370,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Profilimi Düzenle</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-user-edit text-primary-duo me-2"></i>Profilimi Düzenle</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -410,7 +422,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">Genel Ayarlar</h5>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-sliders text-primary-duo me-2"></i>Genel Ayarlar</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -420,7 +432,7 @@
                             <div style="font-size: 0.85rem; color: var(--text-muted);">Görev bitiş tarihlerinde e-posta al.</div>
                         </div>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked style="width: 40px; height: 20px;">
+                            <input class="form-check-input" type="checkbox" checked style="width: 42px; height: 22px;">
                         </div>
                     </div>
                     <hr style="border-top: 1px solid var(--border-color); margin: 16px 0;" />
@@ -430,10 +442,10 @@
                             <div style="font-size: 0.85rem; color: var(--text-muted);">Performans özetimi haftalık olarak gönder.</div>
                         </div>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" style="width: 40px; height: 20px;">
+                            <input class="form-check-input" type="checkbox" style="width: 42px; height: 22px;">
                         </div>
                     </div>
-                    <div class="alert alert-info mt-4 mb-0" style="font-size: 0.85rem;">
+                    <div class="alert alert-info mt-4 mb-0" style="font-size: 0.85rem; border-radius: var(--radius-md);">
                         <i class="fas fa-info-circle me-2"></i> Ayarlarınız tarayıcınıza yerel olarak kaydedilir.
                     </div>
                 </div>
@@ -441,15 +453,10 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    @Html.AntiForgeryToken()
-    <script src="~/js/site.js"></script>
     <!-- ARKADAŞLARIM MODALI -->
     <div class="modal fade" id="friendsModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="min-height: 500px;">
+            <div class="modal-content" style="min-height: 520px;">
                 <div class="modal-header">
                     <h5 class="fw-bold mb-0" style="color: var(--text-main);"><i class="fas fa-user-friends text-primary-duo me-2"></i> Arkadaşlarım</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -463,26 +470,22 @@
                                 <button class="btn btn-primary-custom" onclick="searchFriends()"><i class="fas fa-search"></i></button>
                             </div>
                             <div id="friendSearchResults" style="max-height: 150px; overflow-y: auto;">
-                                <!-- Arama sonuçları -->
                                 <div class="text-muted text-center small mt-4">Kişi bulmak için arama yapın.</div>
                             </div>
 
                             <hr style="border-color: var(--border-color); margin: 20px 0;" />
                             <h6 class="fw-bold mb-2">Gelen İstekler <span class="badge bg-red-duo" id="pendingReqCount">0</span></h6>
                             <div id="pendingRequestsList" class="mb-3" style="max-height: 130px; overflow-y: auto;">
-                                <!-- Gelen İstekler -->
                             </div>
 
                             <hr style="border-color: var(--border-color); margin: 20px 0;" />
                             <h6 class="fw-bold mb-2">Gönderilen İstekler <span class="badge bg-secondary" id="sentReqCount">0</span></h6>
                             <div id="sentRequestsList" style="max-height: 130px; overflow-y: auto;">
-                                <!-- Gönderilen İstekler -->
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 ps-md-4">
                             <h6 class="fw-bold mb-3">Arkadaş Listen <span class="badge bg-primary-duo" id="friendsCount">0</span></h6>
                             <div id="acceptedFriendsList" style="max-height: 420px; overflow-y: auto;">
-                                <!-- Arkadaşlar -->
                             </div>
                         </div>
                     </div>
@@ -491,5 +494,10 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    @Html.AntiForgeryToken()
+    <script src="~/js/site.js"></script>
 </body>
 </html>

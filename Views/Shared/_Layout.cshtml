@@ -1,18 +1,27 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"] - Görev Yöneticisi</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom mb-3" style="background: var(--bg-alt); border-color: var(--border-color) !important;">
+            <div class="container-fluid px-4">
                 <!-- Sol Üst Logo / Başlık -->
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">Görev Yöneticisi</a>
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" asp-controller="Home" asp-action="Index" style="color: var(--text-main); font-size: 1.25rem;">
+                    <span class="duo-logo-icon" style="width: 32px; height: 32px; font-size: 1rem;"><i class="fas fa-feather-alt"></i></span>
+                    <span>ToDo Workspace</span>
+                </a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Açılır menü">
@@ -21,35 +30,34 @@
 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
 
-                    <!-- Sol Menü (Herkesin Göreceği Linkler) -->
-                    <ul class="navbar-nav flex-grow-1">
+                    <!-- Sol Menü -->
+                    <ul class="navbar-nav flex-grow-1 ms-3">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
+                            <a class="nav-link fw-semibold" asp-controller="Home" asp-action="Index" style="color: var(--text-muted);">Ana Sayfa</a>
                         </li>
                     </ul>
 
-                    <!-- Sağ Menü (Akıllı Giriş / Çıkış Alanı) -->
-                    <ul class="navbar-nav ms-auto">
+                    <!-- Sağ Menü -->
+                    <ul class="navbar-nav ms-auto align-items-center gap-2">
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
-                            // Kullanıcı GİRİŞ YAPMIŞSA burası görünür
                             <li class="nav-item d-flex align-items-center">
-                                <span class="nav-link text-primary fw-bold me-3">
+                                <span class="badge bg-primary-duo py-2 px-3 fw-bold me-2">
+                                    <i class="fas fa-user-circle me-1"></i>
                                     @User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value
                                 </span>
                             </li>
                             <li class="nav-item">
-                                <a class="btn btn-outline-danger" asp-controller="Auth" asp-action="Logout">Çıkış Yap</a>
+                                <a class="btn btn-sm btn-outline-danger px-3 py-2 fw-semibold" asp-controller="Auth" asp-action="Logout" style="border-radius: var(--radius-md);">Çıkış Yap</a>
                             </li>
                         }
                         else
                         {
-                            // Kullanıcı MİSAFİRSE burası görünür
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Giriş Yap</a>
+                                <a class="nav-link fw-semibold px-3" asp-controller="Auth" asp-action="Login" style="color: var(--text-main);">Giriş Yap</a>
                             </li>
-                            <li class="nav-item ms-2">
-                                <a class="btn btn-primary" asp-controller="Auth" asp-action="Register">Kayıt Ol</a>
+                            <li class="nav-item ms-1">
+                                <a class="btn btn-primary-custom" asp-controller="Auth" asp-action="Register">Kayıt Ol</a>
                             </li>
                         }
                     </ul>
@@ -61,14 +69,13 @@
 
     <div class="container">
         <main role="main" class="pb-3">
-            <!-- Diğer sayfalar (Index, Login, Register) tam bu araya yüklenir -->
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted mt-5">
-        <div class="container">
-            &copy; 2026 - Görev Yöneticisi
+    <footer class="border-top footer text-muted mt-5 py-3" style="border-color: var(--border-color) !important;">
+        <div class="container text-center fw-medium" style="font-size: 0.88rem;">
+            &copy; 2026 - ToDo Workspace. Tüm hakları saklıdır.
         </div>
     </footer>
 
