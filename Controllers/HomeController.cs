@@ -14,8 +14,8 @@ namespace ToDoWebApp.Controllers
         public HomeController(ApplicationDbContext dbContext) 
         { 
             _context = dbContext;
-        
         }
+
         public IActionResult Index()
         {
             var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -33,11 +33,13 @@ namespace ToDoWebApp.Controllers
             return View(user);
         }
 
+        [AllowAnonymous]
         public IActionResult Privacy()
         {
             return View();
         }
 
+        [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

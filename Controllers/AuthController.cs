@@ -47,66 +47,75 @@ namespace ToDoWebApp.Controllers
             var cleanInput = email.Trim();
             var cleanInputLower = cleanInput.ToLowerInvariant();
 
-            // E-posta veya kullanıcı adına göre kullanıcıyı bul
-            var user = await _context.Users.FirstOrDefaultAsync(u =>
-                (u.Email != null && (u.Email == cleanInput || u.Email.ToLower() == cleanInputLower)) ||
-                (u.Username != null && (u.Username == cleanInput || u.Username.ToLower() == cleanInputLower)));
-
-            if (user != null)
+            try
             {
-                var passwordHasher = new PasswordHasher<User>();
-                bool isPasswordValid = false;
+                // E-posta veya kullanıcı adına göre kullanıcıyı bul
+                var user = await _context.Users.FirstOrDefaultAsync(u =>
+                    (u.Email != null && (u.Email == cleanInput || u.Email.ToLower() == cleanInputLower)) ||
+                    (u.Username != null && (u.Username == cleanInput || u.Username.ToLower() == cleanInputLower)));
 
-                // 1. Önce hash doğrulamasını dene (düz metin eski şifrelerde FormatException fırlatılmasını engelle)
-                try
+                if (user != null)
                 {
-                    var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
-                    if (result == PasswordVerificationResult.Success || result == PasswordVerificationResult.SuccessRehashNeeded)
+                    var passwordHasher = new PasswordHasher<User>();
+                    bool isPasswordValid = false;
+
+                    // 1. Önce hash doğrulamasını dene (düz metin eski şifrelerde FormatException fırlatılmasını engelle)
+                    try
                     {
+                        var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
+                        if (result == PasswordVerificationResult.Success || result == PasswordVerificationResult.SuccessRehashNeeded)
+                        {
+                            isPasswordValid = true;
+                        }
+                    }
+                    catch
+                    {
+                        isPasswordValid = false;
+                    }
+
+                    // 2. Düz metin şifre kontrolü ve otomatik olarak güvenli hash'e dönüştürülmesi
+                    if (!isPasswordValid && user.Password == password)
+                    {
+                        user.Password = passwordHasher.HashPassword(user, password);
+                        await _context.SaveChangesAsync();
                         isPasswordValid = true;
                     }
-                }
-                catch
-                {
-                    isPasswordValid = false;
-                }
 
-                // 2. Düz metin şifre kontrolü ve otomatik olarak güvenli hash'e dönüştürülmesi
-                if (!isPasswordValid && user.Password == password)
-                {
-                    user.Password = passwordHasher.HashPassword(user, password);
-                    await _context.SaveChangesAsync();
-                    isPasswordValid = true;
-                }
-
-                if (isPasswordValid)
-                {
-                    string safeUsername = !string.IsNullOrWhiteSpace(user.Username)
-                        ? user.Username
-                        : (!string.IsNullOrWhiteSpace(user.Email) ? user.Email.Split('@')[0] : "Kullanıcı");
-
-                    string safeEmail = user.Email ?? string.Empty;
-
-                    var claims = new List<Claim>
+                    if (isPasswordValid)
                     {
-                        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                        new Claim(ClaimTypes.Email, safeEmail),
-                        new Claim(ClaimTypes.Name, safeUsername)
-                    };
+                        string safeUsername = !string.IsNullOrWhiteSpace(user.Username)
+                            ? user.Username
+                            : (!string.IsNullOrWhiteSpace(user.Email) ? user.Email.Split('@')[0] : "Kullanıcı");
 
-                    var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        string safeEmail = user.Email ?? string.Empty;
 
-                    await HttpContext.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        new ClaimsPrincipal(claimsIdentity));
+                        var claims = new List<Claim>
+                        {
+                            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                            new Claim(ClaimTypes.Email, safeEmail),
+                            new Claim(ClaimTypes.Name, safeUsername)
+                        };
 
-                    _logger.LogInformation("Kullanıcı giriş yaptı: {UserId}", user.Id);
-                    return RedirectToAction("Index", "Home");
+                        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+                        await HttpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            new ClaimsPrincipal(claimsIdentity));
+
+                        _logger.LogInformation("Kullanıcı giriş yaptı: {UserId}", user.Id);
+                        return RedirectToAction("Index", "Home");
+                    }
                 }
-            }
 
-            ViewBag.Error = "Geçersiz e-posta veya şifre.";
-            return View();
+                ViewBag.Error = "Geçersiz e-posta veya şifre.";
+                return View();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Giriş işlemi sırasında veritabanı bağlantı hatası oluştu.");
+                ViewBag.Error = "Veritabanına bağlanılamadı. Lütfen SQL Server veya Docker servisinin çalıştığından emin olun.";
+                return View();
+            }
         }
 
         [HttpGet]
@@ -132,31 +141,40 @@ namespace ToDoWebApp.Controllers
             var cleanUsername = model.Username.Trim();
             var cleanEmail = model.Email.Trim().ToLowerInvariant();
 
-            if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail))
+            try
             {
-                ViewBag.Error = "Bu e-posta adresi zaten kullanılıyor.";
+                if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail))
+                {
+                    ViewBag.Error = "Bu e-posta adresi zaten kullanılıyor.";
+                    return View(model);
+                }
+
+                if (await _context.Users.AnyAsync(u => u.Username != null && u.Username.ToLower() == cleanUsername.ToLower()))
+                {
+                    ViewBag.Error = "Bu kullanıcı adı zaten kullanılıyor.";
+                    return View(model);
+                }
+
+                var passwordHasher = new PasswordHasher<User>();
+                var newUser = new User
+                {
+                    Username = cleanUsername,
+                    Email = cleanEmail
+                };
+                newUser.Password = passwordHasher.HashPassword(newUser, model.Password);
+
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Yeni kullanıcı kaydı oluşturuldu: {Email}", cleanEmail);
+                return RedirectToAction("Login");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kayıt işlemi sırasında veritabanı bağlantı hatası oluştu.");
+                ViewBag.Error = "Veritabanına bağlanılamadı. Lütfen SQL Server veya Docker servisinin çalıştığından emin olun.";
                 return View(model);
             }
-
-            if (await _context.Users.AnyAsync(u => u.Username != null && u.Username.ToLower() == cleanUsername.ToLower()))
-            {
-                ViewBag.Error = "Bu kullanıcı adı zaten kullanılıyor.";
-                return View(model);
-            }
-
-            var passwordHasher = new PasswordHasher<User>();
-            var newUser = new User
-            {
-                Username = cleanUsername,
-                Email = cleanEmail
-            };
-            newUser.Password = passwordHasher.HashPassword(newUser, model.Password);
-
-            _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Yeni kullanıcı kaydı oluşturuldu: {Email}", cleanEmail);
-            return RedirectToAction("Login");
         }
 
         public async Task<IActionResult> Logout()
@@ -182,26 +200,36 @@ namespace ToDoWebApp.Controllers
             }
 
             var cleanEmail = Email.Trim().ToLowerInvariant();
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail);
 
-            if (user != null)
+            try
             {
-                var tokenBytes = RandomNumberGenerator.GetBytes(32);
-                user.ResetToken = Convert.ToHexString(tokenBytes).ToLowerInvariant();
-                user.ResetTokenExpire = DateTime.UtcNow.AddHours(1);
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail);
 
-                await _context.SaveChangesAsync();
-
-                string? resetLink = Url.Action("ResetPassword", "Auth", new { token = user.ResetToken }, protocol: HttpContext.Request.Scheme);
-                
-                if (!string.IsNullOrEmpty(resetLink))
+                if (user != null)
                 {
-                    await _emailService.SendPasswordResetEmailAsync(cleanEmail, resetLink);
-                }
-            }
+                    var tokenBytes = RandomNumberGenerator.GetBytes(32);
+                    user.ResetToken = Convert.ToHexString(tokenBytes).ToLowerInvariant();
+                    user.ResetTokenExpire = DateTime.UtcNow.AddHours(1);
 
-            ViewBag.Success = "Eğer sistemimizde böyle bir hesap varsa, şifre sıfırlama bağlantısı gönderilmiştir.";
-            return View();
+                    await _context.SaveChangesAsync();
+
+                    string? resetLink = Url.Action("ResetPassword", "Auth", new { token = user.ResetToken }, protocol: HttpContext.Request.Scheme);
+                    
+                    if (!string.IsNullOrEmpty(resetLink))
+                    {
+                        await _emailService.SendPasswordResetEmailAsync(cleanEmail, resetLink);
+                    }
+                }
+
+                ViewBag.Success = "Eğer sistemimizde böyle bir hesap varsa, şifre sıfırlama bağlantısı gönderilmiştir.";
+                return View();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Şifremi unuttum işlemi sırasında veritabanı bağlantı hatası oluştu.");
+                ViewBag.Error = "Veritabanına bağlanılamadı. Lütfen veritabanı servisinin çalıştığından emin olun.";
+                return View();
+            }
         }
 
         [HttpGet]
@@ -230,25 +258,34 @@ namespace ToDoWebApp.Controllers
                 return View();
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.ResetToken == Token && u.ResetTokenExpire > DateTime.UtcNow);
-
-            if (user == null)
+            try
             {
-                ViewBag.Error = "Geçersiz veya süresi dolmuş bir şifre sıfırlama bağlantısı kullandınız!";
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.ResetToken == Token && u.ResetTokenExpire > DateTime.UtcNow);
+
+                if (user == null)
+                {
+                    ViewBag.Error = "Geçersiz veya süresi dolmuş bir şifre sıfırlama bağlantısı kullandınız!";
+                    return View();
+                }
+
+                var passwordHasher = new PasswordHasher<User>();
+                user.Password = passwordHasher.HashPassword(user, NewPassword);
+
+                user.ResetToken = null;
+                user.ResetTokenExpire = null;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Kullanıcı şifresi sıfırlandı: {UserId}", user.Id);
+                ViewBag.Success = "Şifreniz başarıyla güncellendi! Artık giriş yapabilirsiniz.";
                 return View();
             }
-
-            var passwordHasher = new PasswordHasher<User>();
-            user.Password = passwordHasher.HashPassword(user, NewPassword);
-
-            user.ResetToken = null;
-            user.ResetTokenExpire = null;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Kullanıcı şifresi sıfırlandı: {UserId}", user.Id);
-            ViewBag.Success = "Şifreniz başarıyla güncellendi! Artık giriş yapabilirsiniz.";
-            return View();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Şifre sıfırlama sırasında veritabanı bağlantı hatası oluştu.");
+                ViewBag.Error = "Veritabanına bağlanılamadı. Lütfen veritabanı servisinin çalıştığından emin olun.";
+                return View();
+            }
         }
     }
 }
