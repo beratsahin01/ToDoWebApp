@@ -64,6 +64,7 @@ namespace ToDoWebApp.Controllers
             if (groupId == null) return true; // Kişisel alan
 
             var group = await _context.WorkGroups
+                .AsNoTracking()
                 .Include(g => g.Members)
                 .FirstOrDefaultAsync(g => g.Id == groupId);
 
@@ -87,6 +88,7 @@ namespace ToDoWebApp.Controllers
             if (!await HasGroupAccess(userId, groupId)) return StatusCode(403, "Bu odaya erişim yetkiniz yok.");
 
             var categories = await _context.Categories
+                .AsNoTracking()
                 .Where(c => c.WorkGroupId == groupId && (groupId != null || c.UserId == userId))
                 .Select(c => new
                 {
@@ -170,6 +172,7 @@ namespace ToDoWebApp.Controllers
 
             // 2. Veritabanından Getirme
             var tasks = await _context.TaskItems
+                .AsNoTracking()
                 .Include(t => t.Category)
                 .Where(t => t.WorkGroupId == groupId && (groupId != null || t.UserId == userId))
                 .ToListAsync();

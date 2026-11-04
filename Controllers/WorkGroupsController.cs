@@ -32,6 +32,7 @@ namespace ToDoWebApp.Controllers
         {
             var userId = GetCurrentUserId();
             var groups = await _context.WorkGroups
+                .AsNoTracking()
                 .Include(g => g.Members)
                 .Where(g => g.OwnerId == userId || g.Members.Any(m => m.UserId == userId))
                 .Select(g => new

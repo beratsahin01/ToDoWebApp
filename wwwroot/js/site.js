@@ -299,7 +299,7 @@ function selectGroup(id) {
     }
 
     renderSidebar();
-    loadCategories();
+    loadWorkspace();
 }
 
 function openGroupManageModal() {
@@ -377,35 +377,57 @@ function removeGroupMember(memberUserId) {
     }).catch(err => alert("Bağlantı hatası: " + err));
 }
 
+function updateCategoriesSelectUI(data) {
+    const addSelect = document.getElementById('taskCategory');
+    const editSelect = document.getElementById('editTaskCategory');
+    const modalListContainer = document.getElementById('modalCategoryListContainer');
+
+    if (addSelect) addSelect.innerHTML = '<option value="">Genel (Kategorisiz)</option>';
+    if (editSelect) editSelect.innerHTML = '<option value="">Genel (Kategorisiz)</option>';
+    if (modalListContainer) modalListContainer.innerHTML = '';
+    let canEdit = currentGroupRole !== 'Viewer';
+
+    if (data.length === 0 && modalListContainer) {
+        modalListContainer.innerHTML = '<div class="text-muted text-center py-3 fw-bold">Kategori yok.</div>';
+    }
+
+    data.forEach(cat => {
+        let optionHtml = '<option value="' + cat.id + '">' + escapeHtml(cat.name) + '</option>';
+        if (addSelect) addSelect.innerHTML += optionHtml;
+        if (editSelect) editSelect.innerHTML += optionHtml;
+
+        let actionButtons = canEdit ? '<button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deleteCategory(' + cat.id + ')" title="Sil" style="background:transparent;"><i class="fas fa-trash text-danger"></i></button>' : '<span class="badge bg-secondary">İzleyici</span>';
+        if (modalListContainer) {
+            modalListContainer.innerHTML += '<div class="category-list-item"><span><i class="fas fa-tag me-2 text-primary-duo"></i>' + escapeHtml(cat.name) + '</span><div>' + actionButtons + '</div></div>';
+        }
+    });
+}
+
 function loadCategories() {
-    let url = currentGroupId ? `/api/category?groupId=${currentGroupId}` : '/api/category';
-    
-    fetch(url)
+    let url = currentGroupId ? ('/api/category?groupId=' + currentGroupId) : '/api/category';
+    return fetch(url)
         .then(response => response.json())
         .then(data => {
             globalCategories = data;
-            const addSelect = document.getElementById('taskCategory');
-            const editSelect = document.getElementById('editTaskCategory');
-            const modalListContainer = document.getElementById('modalCategoryListContainer');
-
-            addSelect.innerHTML = '<option value="">Genel (Kategorisiz)</option>';
-            editSelect.innerHTML = '<option value="">Genel (Kategorisiz)</option>';
-            modalListContainer.innerHTML = '';
-            let canEdit = currentGroupRole !== 'Viewer';
-
-            if (data.length === 0) modalListContainer.innerHTML = '<div class="text-muted text-center py-3 fw-bold">Kategori yok.</div>';
-
-            data.forEach(cat => {
-                let optionHtml = `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`;
-                addSelect.innerHTML += optionHtml;
-                editSelect.innerHTML += optionHtml;
-
-                let actionButtons = canEdit ? `<button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deleteCategory(${cat.id})" title="Sil" style="background:transparent;"><i class="fas fa-trash text-danger"></i></button>` : `<span class="badge bg-secondary">İzleyici</span>`;
-                modalListContainer.innerHTML += `<div class="category-list-item"><span><i class="fas fa-tag me-2 text-primary-duo"></i>${escapeHtml(cat.name)}</span><div>${actionButtons}</div></div>`;
-            });
-
-            loadTasks();
+            updateCategoriesSelectUI(data);
         });
+}
+
+function loadWorkspace() {
+    let catUrl = currentGroupId ? ('/api/category?groupId=' + currentGroupId) : '/api/category';
+    let taskUrl = currentGroupId ? ('/api/task?groupId=' + currentGroupId) : '/api/task';
+
+    // PARALLEL FETCH: Kategori ve görev istekleri eşzamanlı gönderilerek waterfall gecikmesi sıfırlanır
+    Promise.all([
+        fetch(catUrl).then(r => r.json()),
+        fetch(taskUrl).then(r => r.json())
+    ]).then(([cats, tasks]) => {
+        globalCategories = cats;
+        updateCategoriesSelectUI(cats);
+        renderTasksData(tasks);
+    }).catch(err => {
+        console.error('Workspace yüklenirken hata:', err);
+    });
 }
 
 function deleteCategory(id) {
@@ -416,14 +438,17 @@ function deleteCategory(id) {
 }
 
 function loadTasks() {
-    let url = currentGroupId ? `/api/task?groupId=${currentGroupId}` : '/api/task';
-
+    let url = currentGroupId ? ('/api/task?groupId=' + currentGroupId) : '/api/task';
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            allTasksData = data;
-            
-            // Clean up SortableJS instances
+            renderTasksData(data);
+        });
+}
+
+function renderTasksData(data) {
+    allTasksData = data;
+    // Clean up SortableJS instances
             sortableInstances.forEach(s => s.destroy());
             sortableInstances = [];
 

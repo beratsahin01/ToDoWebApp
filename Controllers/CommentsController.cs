@@ -44,6 +44,7 @@ namespace ToDoWebApp.Controllers
                 return StatusCode(403, "Bu görevin yorumlarına erişim yetkiniz yok.");
 
             var comments = await _context.Comments
+                .AsNoTracking()
                 .Include(c => c.User)
                 .Where(c => c.TaskItemId == taskId)
                 .OrderBy(c => c.CreatedAt)

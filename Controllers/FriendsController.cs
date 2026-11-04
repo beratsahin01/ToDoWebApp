@@ -50,12 +50,14 @@ namespace ToDoWebApp.Controllers
             var cleanQuery = query.Trim();
 
             var users = await _context.Users
+                .AsNoTracking()
                 .Where(u => u.Id != userId && (u.Username.Contains(cleanQuery) || u.Email.Contains(cleanQuery)))
                 .Take(10)
                 .ToListAsync();
 
             var targetIds = users.Select(u => u.Id).ToList();
             var friendships = await _context.Friendships
+                .AsNoTracking()
                 .Where(f => (f.RequesterId == userId && targetIds.Contains(f.AddresseeId)) ||
                             (f.AddresseeId == userId && targetIds.Contains(f.RequesterId)))
                 .ToListAsync();

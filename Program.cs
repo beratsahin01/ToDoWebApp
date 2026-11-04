@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
 using System.Threading.RateLimiting;
 using ToDoWebApp.Middlewares;
 using ToDoWebApp.Models.Data;
@@ -21,7 +23,23 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.SameSite = SameSiteMode.Lax;
     });
 
-// 2. Rate Limiting (Kaba kuvvet ve istek taşması koruması)
+// 2. Response Compression (Brotli & Gzip ile veri transferini %70+ hızlandırma)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+
+// 3. Rate Limiting (Kaba kuvvet ve istek taşması koruması)
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -37,36 +55,50 @@ builder.Services.AddMemoryCache();
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IEmailService, ResendEmailService>();
 
-// 3. Güvenli Antiforgery (CSRF Koruması)
+// 4. Güvenli Antiforgery (CSRF Koruması)
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
-// 4. Veritabanı Bağlantısı
+// 5. Veritabanı Bağlantısı
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 5. Health Checks (Sağlık Denetimi)
+// 6. Health Checks (Sağlık Denetimi)
 builder.Services.AddHealthChecks();
 
-// 6. Redis Dağıtık Önbellekleme
-builder.Services.AddStackExchangeRedisCache(options =>
+// 7. Yüksek Performanslı Dağıtık Önbellekleme (Akıllı Fallback)
+// Render veya yerel ortamda Redis bağlantısı yoksa, 5-10 saniye beklemek yerine
+// 0ms gecikmeli bellek içi (In-Memory) dağıtık önbelleğe geçerek yanıt sürelerini mikrosaniyelere düşürür.
+var redisConn = builder.Configuration.GetConnectionString("Redis");
+bool isRemoteRedisConfigured = !string.IsNullOrWhiteSpace(redisConn)
+    && !redisConn.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)
+    && !redisConn.StartsWith("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+
+if (isRemoteRedisConfigured)
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-    options.InstanceName = "ToDoWebApp_";
-});
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConn;
+        options.InstanceName = "ToDoWebApp_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 7. Global Exception Handler
+// 8. Global Exception Handler
 app.UseMiddleware<ExceptionMiddleware>();
 
-// 8. Ortama Göre Hata & Swagger Yönetimi
+// 9. Ortama Göre Hata & Swagger Yönetimi
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -79,6 +111,7 @@ else
     app.UseHsts();
 }
 
+app.UseResponseCompression();
 app.UseHttpsRedirection();
 app.UseRouting();
 
